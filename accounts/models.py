@@ -16,8 +16,22 @@ class User(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.email
-    
-    
-    
+        return self.email  
+        
+
+class BlacklistedToken(models.Model):
+    """
+    Токены, которые были "разлогинены" (инвалидированы).
+    """
+    token = models.TextField(unique=True)
+    expires_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["expires_at"]),
+        ]
+
+    def __str__(self):
+        return f"BlacklistedToken(expires_at={self.expires_at})"
 

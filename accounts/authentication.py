@@ -1,7 +1,7 @@
 from jwt import InvalidTokenError, ExpiredSignatureError
 from rest_framework import authentication
 
-from .models import User
+from .models import User, BlacklistedToken
 from config.jwt_utils import decode_access_token
 
 
@@ -28,6 +28,10 @@ class JWTAuthentication(authentication.BaseAuthentication):
         try:
             payload = decode_access_token(token)
         except (ExpiredSignatureError, InvalidTokenError):
+            return None
+
+        # Logout для JWT: если токен в blacklist — считаем пользователя неаутентифицированным
+        if BlacklistedToken.objects.filter(token=token).exists():
             return None
 
         user_id = payload.get('user_id')

@@ -7,6 +7,10 @@ from rest_framework import status
 from .models import User
 from .serializers import RegisterSerializer, UserSerializer, LoginSerializer
 from config.jwt_utils import create_access_token
+from config.jwt_utils import decode_access_token
+from jwt import InvalidTokenError
+from .models import BlacklistedToken
+from datetime import datetime, timezone
 
 
 def _get_login_data(request):
@@ -63,6 +67,41 @@ class LoginView(APIView):
         token = create_access_token(user.id)
         return Response({'access_token': token})
 
+class LogoutView(APIView):
+    """
+    Logout для JWT:
+    - добавляем текущий access token в blacklist
+    - после этого запросы с этим токеном будут получать 401
+    """
+    def post(self, request):
+        if not _is_authenticated_user(request):
+            return Response({'detail': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        token = getattr(request, "auth", None)
+        if not token:
+            return Response({'detail': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        try:
+            payload = decode_access_token(token)
+        except InvalidTokenError:
+            return Response({'detail': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        exp = payload.get("exp")
+        # exp может быть datetime (PyJWT умеет такое), но чаще это timestamp
+        if isinstance(exp, (int, float)):
+            expires_at = datetime.fromtimestamp(exp, tz=timezone.utc)
+        elif isinstance(exp, datetime):
+            expires_at = exp
+        else:
+            # на всякий случай: если exp нет, ставим "сейчас"
+            expires_at = datetime.now(timezone.utc)
+
+        BlacklistedToken.objects.get_or_create(
+            token=token,
+            defaults={"expires_at": expires_at},
+        )
+        return Response({'detail': 'Logged out'}, status=status.HTTP_200_OK)
+
 
 def _is_authenticated_user(request):
     """Пользователь залогинен только если это наша модель User (не AnonymousUser)."""
@@ -102,14 +141,6 @@ class DeleteMeView(APIView):
         user.save()
         return Response({'detail': 'Account deactivated'}, status=status.HTTP_200_OK)
 
-# class UserDetailView(APIView):
-#     def get(self, request, pk):
-#         try:
-#             user = User.objects.get(pk=pk)
-#         except User.DoesNotExist:
-#             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
-#         serializer = UserSerializer(user)
-#         return Response(serializer.data)
         
 

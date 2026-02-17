@@ -23,6 +23,10 @@ class RegisterSerializer(serializers.ModelSerializer):
         password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
         role = Role.objects.filter(name='user').first()
+        if not role:
+            raise serializers.ValidationError(
+                'Role "user" not found. Please run: python manage.py init_test_data'
+            )
 
         user = User.objects.create(
             password_hash=password_hash,
@@ -32,10 +36,12 @@ class RegisterSerializer(serializers.ModelSerializer):
         return user
 
 class UserSerializer(serializers.ModelSerializer):
+    role_name = serializers.CharField(source='role.name', read_only=True)
+    
     class Meta:
         model = User
-        fields = ['id', 'first_name', 'last_name', 'middle_name', 'email', 'is_active', 'role']
-        read_only_fields = ['id', 'role']
+        fields = ['id', 'first_name', 'last_name', 'middle_name', 'email', 'is_active', 'role', 'role_name']
+        read_only_fields = ['id', 'role', 'role_name']
 
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()

@@ -18,7 +18,7 @@ from django.contrib import admin
 from django.urls import path
 from django.views.decorators.csrf import csrf_exempt
 
-from accounts.views import RegisterView, LoginView, MeView, DeleteMeView
+from accounts.views import RegisterView, LoginView, LogoutView, MeView, DeleteMeView
 from access_control.views import (
     RoleListCreateView,
     RoleDetailView,
@@ -35,6 +35,7 @@ urlpatterns = [
 
     path('api/auth/register/', csrf_exempt(RegisterView.as_view())),
     path('api/auth/login/', csrf_exempt(LoginView.as_view())),
+    path('api/auth/logout/', csrf_exempt(LogoutView.as_view())),
     path('api/auth/me/', csrf_exempt(MeView.as_view())),
     path('api/auth/me/delete/', csrf_exempt(DeleteMeView.as_view())),
 
